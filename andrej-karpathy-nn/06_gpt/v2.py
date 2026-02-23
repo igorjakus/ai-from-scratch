@@ -113,7 +113,7 @@ class FeedForward(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(n_embd, 4 * n_embd),
-            nn.ReLU(),
+            nn.GELU(),
             nn.Linear(4 * n_embd, n_embd),
             nn.Dropout(dropout_prob),  # residual dropout
         )
@@ -183,18 +183,17 @@ model.train()
 print(f"Number of parameters: {sum(p.numel() for p in model.parameters())/1e6}M parameters")
 optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
-for iter in tqdm(range(max_iters)):
+pbar = tqdm(range(max_iters))
+for iter in pbar:
     if iter % eval_interval == 0:
         losses = estimate_loss()
-        print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
+        pbar.write(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
     xb, yb = get_batch("train")
     logits, loss = model(xb, yb)
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
-losses = estimate_loss()
-print(f"step {iter}: train loss {losses['train']:.4f}, val loss {losses['val']:.4f}")
 
 model.eval()
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
