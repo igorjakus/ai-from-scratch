@@ -68,44 +68,51 @@ class LayerNorm(nn.Module):
         return self.gain * ((x - x.mean(dim=-1, keepdim=True)) * (x.var(dim=-1, keepdim=True) + eps)**-0.5) + self.bias
 
 
-class AttentionHead(nn.Module):
-    def __init__(self, head_size):
-        super().__init__()
-        self.Q = nn.Linear(n_embd, head_size, bias=False)
-        self.K = nn.Linear(n_embd, head_size, bias=False)
-        self.V = nn.Linear(n_embd, head_size, bias=False)
-        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
-        self.dropout = nn.Dropout(dropout_prob)
-
-    def forward(self, x):
-        B, T, C = x.shape
-        q = self.Q(x) # (B, T, head_size)
-        k = self.K(x) # (B, T, head_size)
-        v = self.V(x) # (B, T, head_size)
-        head_size = q.shape[-1]
-        
-        wei = q @ k.transpose(-1, -2) * (head_size**-0.5) # (B, T, head_size) @ (B, head_size, T) -> (B, T, T)
-        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf')) # (B, T, T)
-        wei = F.softmax(wei, dim=-1) # (B, T, T)
-        wei = self.dropout(wei) # so that the model doesn't always look at the same tokens
-        out = wei @ v # (B, T, T) @ (B, T, head_size) -> (B, T, head_size)
-        return out
-
 class MultiHeadAttention(nn.Module):
     def __init__(self, num_heads, head_size):
         super().__init__()
-        self.heads = nn.ModuleList(AttentionHead(head_size) for _ in range(num_heads))
+        self.nh = num_heads
+        self.hs = head_size
+
+        self.Q = nn.Linear(n_embd, num_heads * head_size, bias=False)
+        self.K = nn.Linear(n_embd, num_heads * head_size, bias=False)
+        self.V = nn.Linear(n_embd, num_heads * head_size, bias=False)
+        self.attn_dropout = nn.Dropout(dropout_prob)
+        self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
+        
         self.proj = nn.Linear(head_size * num_heads, n_embd)
-        self.dropout = nn.Dropout(dropout_prob)
+        self.proj_dropout = nn.Dropout(dropout_prob)
         
     def forward(self, x):
-        # x -> (B, T, C)
-        # head(x) -> (B, T, head_size)
-        # torch.cat(...) -> (B, T, num_heads * head_size)
-        # so we want C = num_heads * head_size to preserve the dimensionality
-        out = torch.cat([head(x) for head in self.heads], dim=-1)
+        B, T, C = x.shape
+        
+        # 1. Calculate Q, K, V for all heads at once
+        k = self.K(x) # (B, T, num_heads * head_size)
+        q = self.Q(x) # (B, T, num_heads * head_size)
+        v = self.V(x) # (B, T, num_heads * head_size)
+
+        # 2. Split into multiple heads
+        k = k.view(B, T, self.nh, self.hs)  # (B, T, num_heads, head_size)
+        q = q.view(B, T, self.nh, self.hs)  # (B, T, num_heads, head_size)
+        v = v.view(B, T, self.nh, self.hs)  # (B, T, num_heads, head_size)
+
+        k = k.transpose(1, 2)  # (B, num_heads, T, head_size)
+        q = q.transpose(1, 2)  # (B, num_heads, T, head_size)
+        v = v.transpose(1, 2)  # (B, num_heads, T, head_size)
+
+        # 3. Calculate attention scores
+        wei = q @ k.transpose(-1, -2) * (self.hs**-0.5)  # (B, nh, T, T)
+        wei = wei.masked_fill(self.tril[:T, :T] == 0, float('-inf'))  # (B, nh, T, T)
+        wei = F.softmax(wei, dim=-1)
+        wei = self.attn_dropout(wei)
+        out = wei @ v  # (B, nh, T, hs)
+
+        # 4. Stack heads
+        out = out.transpose(1, 2).contiguous()  # (B, T, nh, hs)
+        out = out.view(B, T, C)  # (B, T, C)
+
         out = self.proj(out)  # exchanging information between heads
-        out = self.dropout(out)
+        out = self.proj_dropout(out)
         return out
 
 class FeedForward(nn.Module):
@@ -143,7 +150,7 @@ class GPTLanguageModel(nn.Module):
         super().__init__()
         self.token_embedding_table = nn.Embedding(vocab_size, n_embd)
         self.position_embedding_table = nn.Embedding(block_size, n_embd)
-        self.blocks = nn.Sequential(*[Block(n_embd, n_head=4) for _ in range(n_layer)])
+        self.blocks = nn.Sequential(*[Block(n_embd, n_head=n_head) for _ in range(n_layer)])
         self.ln = LayerNorm(n_embd)
         self.lm_head = nn.Linear(n_embd, vocab_size)
 
