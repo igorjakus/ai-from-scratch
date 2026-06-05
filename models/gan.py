@@ -15,9 +15,9 @@ class Generator(nn.Module):
 
         self.generator = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, input_dim),
             nn.Sigmoid()
         )
@@ -40,9 +40,9 @@ class Discriminator(nn.Module):
 
         self.discriminator = nn.Sequential(
             nn.Linear(input_dim, hidden_dim),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, 1),
             nn.Sigmoid()
         )
@@ -68,8 +68,8 @@ def gan_train(
     device: torch.device,
     epochs: int = 1,
 ) -> list[float]:
-    g_optimizer = torch.optim.Adam(generator.parameters(), lr=1e-3)
-    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=1e-3)
+    g_optimizer = torch.optim.Adam(generator.parameters(),     lr=2e-4, betas=(0.5, 0.999))
+    d_optimizer = torch.optim.Adam(discriminator.parameters(), lr=2e-4, betas=(0.5, 0.999))
 
     epoch_losses = []
     for epoch in range(epochs):
