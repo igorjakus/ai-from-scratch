@@ -24,6 +24,10 @@ def flatten_images(x: Tensor) -> Tensor:
     return x
 
 
+def count_params(model: torch.nn.Module) -> int:
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
 def train(
     model: torch.nn.Module,
     loader: DataLoader,
