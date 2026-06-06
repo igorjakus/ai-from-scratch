@@ -44,21 +44,25 @@ class Discriminator(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
             nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, 1),
-            nn.Sigmoid()
         )
 
     def forward(self, x: Tensor) -> Tensor:
-        prob_real = self.discriminator(x)
-        assert prob_real.shape == (x.size(0), 1)
-        return prob_real
+        logits = self.discriminator(x)
+        assert logits.shape == (x.size(0), 1)
+        return logits
 
 
 
-def discriminator_loss(prob_real: Tensor, prob_fake: Tensor) -> Tensor:
-    return -torch.mean(torch.log(prob_real + 1e-8) + torch.log(1 - prob_fake + 1e-8))\
+def discriminator_loss(real_logits: Tensor, fake_logits: Tensor) -> Tensor:
+    real_targets = torch.ones_like(real_logits)
+    fake_targets = torch.zeros_like(fake_logits)
+    real_loss = F.binary_cross_entropy_with_logits(real_logits, real_targets)
+    fake_loss = F.binary_cross_entropy_with_logits(fake_logits, fake_targets)
+    return real_loss + fake_loss
     
-def generator_loss(prob_fake: Tensor) -> Tensor:
-    return -torch.mean(torch.log(prob_fake + 1e-8))
+def generator_loss(fake_logits: Tensor) -> Tensor:
+    targets = torch.ones_like(fake_logits)
+    return F.binary_cross_entropy_with_logits(fake_logits, targets)
 
 
 def gan_train(
@@ -88,10 +92,10 @@ def gan_train(
             x_fake = x_fake.detach()  # we don't need generator in the graph
                                       # better performance when we avoid backprop to G
 
-            prob_real = discriminator(x_real)
-            prob_fake = discriminator(x_fake)
+            real_logits = discriminator(x_real)
+            fake_logits = discriminator(x_fake)
 
-            d_loss = discriminator_loss(prob_real, prob_fake)
+            d_loss = discriminator_loss(real_logits, fake_logits)
 
             d_optimizer.zero_grad()
             d_loss.backward()
@@ -101,8 +105,8 @@ def gan_train(
             z = torch.randn(batch_size, generator.input_dim, device=device)
             x_fake = generator(z)
 
-            prob_fake = discriminator(x_fake)
-            g_loss = generator_loss(prob_fake)
+            fake_logits = discriminator(x_fake)
+            g_loss = generator_loss(fake_logits)
 
             g_optimizer.zero_grad()
             g_loss.backward()
