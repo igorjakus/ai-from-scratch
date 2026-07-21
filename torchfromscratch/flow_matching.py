@@ -5,7 +5,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from utils import get_inputs, flatten_images
+from .utils import get_inputs, flatten_images
 
 
 class FlowMatching(nn.Module):

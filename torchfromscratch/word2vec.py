@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from pl_preprocess import words_from_file
+from .pl_preprocess import words_from_file
 
 
 def pick_device() -> torch.device:

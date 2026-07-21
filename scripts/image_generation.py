@@ -20,12 +20,12 @@ import torchvision
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-from models.ae import AE, ae_loss
-from models.dcgan import DCGANDiscriminator, DCGANGenerator, dcgan_train
-from models.flow_matching import FlowMatching, fm_train
-from models.gan import Discriminator, Generator, gan_train
-from models.vae import VAE, vae_loss
-from utils import count_params, flatten_images, get_inputs, pick_device, train
+from torchfromscratch.ae import AE, ae_loss
+from torchfromscratch.dcgan import DCGANDiscriminator, DCGANGenerator, dcgan_train
+from torchfromscratch.flow_matching import FlowMatching, fm_train
+from torchfromscratch.gan import Discriminator, Generator, gan_train
+from torchfromscratch.vae import VAE, vae_loss
+from torchfromscratch.utils import count_params, flatten_images, get_inputs, pick_device, train
 
 
 BATCH_SIZE = 128

@@ -6,7 +6,7 @@ from jaxtyping import Float, Array, Int, jaxtyped, PRNGKeyArray
 from beartype import beartype as typechecker
 
 
-from attention import MultiHeadAttention
+from .attention import MultiHeadAttention
 
 
 class RMSNorm(eqx.Module):

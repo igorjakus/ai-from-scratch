@@ -5,7 +5,7 @@ from torch import Tensor
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from utils import get_inputs
+from .utils import get_inputs
 
 
 def weights_init(m: nn.Module) -> None:
