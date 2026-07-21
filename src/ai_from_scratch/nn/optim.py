@@ -35,3 +35,14 @@ class MomentumSGD(torch.optim.Optimizer):
                     buf = param_state["momentum_buffer"]
                     buf.mul_(group["momentum"]).add_(d_p)
                 p.data.add_(buf, alpha=-group["lr"])  # in-place update of the parameters
+
+
+class Adam(torch.optim.Optimizer):
+    pass
+
+
+class AdamW(torch.optim.Optimizer):
+    pass
+
+class Muon(torch.optim.Optimizer):
+    pass
