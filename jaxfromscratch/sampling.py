@@ -1,9 +1,3 @@
-"""
-Categorical sampling in JAX.
-
-Three implementations of sampling from a categorical distribution
-parametrized by logits (unnormalized log-probabilities).
-"""
 from beartype import beartype as typechecker
 from jaxtyping import Array, Float, Int, PRNGKeyArray, jaxtyped
 from jax import random
@@ -21,7 +15,7 @@ def jax_categorical(
     internally via the Gumbel-max trick, so this should match `gumbel_max_categorical`
     in both output distribution and runtime.
     """
-    raise NotImplementedError("TODO: jax.random.categorical(key, logits, axis=-1)")
+    return jax.random.categorical(key, logits, axis=-1)
 
 
 @jaxtyped(typechecker=typechecker)
@@ -40,10 +34,10 @@ def gumbel_max_categorical(
 
     Reference: https://lips.cs.princeton.edu/the-gumbel-max-trick/
     """
-    raise NotImplementedError(
-        "TODO: sample u ~ Uniform(0, 1) with logits.shape, compute g = -log(-log(u)),\n"
-        "TODO: return argmax(logits + g, axis=-1). Mind numerical stability around u=0."
-    )
+    vocab_size = logits.shape[-1]
+    u = jax.random.uniform(key, shape=(vocab_size,), minval=1e-8, maxval=1-1e-8)
+    g = -jax.log(-jax.log(u))
+    return jax.argmax(logits + g, axis=-1)
 
 
 @jaxtyped(typechecker=typechecker)
@@ -62,7 +56,9 @@ def cumsum_categorical(
     The "classical" approach. Expected to be slower than Gumbel-max at large V
     because of the softmax + cumsum, but conceptually simpler.
     """
-    raise NotImplementedError(
-        "TODO: probs = jax.nn.softmax(logits, axis=-1), cdf = jnp.cumsum(probs, axis=-1),\n"
-        "TODO: u = random.uniform(key, logits.shape[:-1]), return jnp.searchsorted(cdf, u, side='left')."
-    )
+    vocab_size = logits.shape[-1]
+    probs = jax.nn.softmax(logits, axis=-1)
+    cdf = jnp.cumsum(probs, axis=-1)
+    u = random.uniform(key, vocab_size)
+    return jnp.searchsorted(cdf, u, side='left')
+
